@@ -1,0 +1,22 @@
+{
+  "version": "5.0.0",
+  "modules": {
+    "core_chat": { "status": "active", "description": "Chat local via Ollama (streaming)" },
+    "auth": { "status": "active", "description": "Compte local, session HttpOnly, CSRF" },
+    "encrypted_storage": { "status": "active", "description": "SQLite + AES-256-GCM applicatif" },
+    "long_memory": { "status": "active", "description": "Souvenirs avec embeddings Ollama" },
+    "editable_memory": { "status": "active", "description": "Mémoire éditable CRUD côté interface" },
+    "voice_browser": { "status": "active", "description": "TTS/STT navigateur" },
+    "voice_piper": { "status": "active", "description": "Piper TTS local optionnel" },
+    "plugins": { "status": "active", "description": "Système de plugins beforeChat/afterChat" },
+    "admin": { "status": "active", "description": "Stats locales, intégrité audit, maintenance" },
+    "encrypted_backups": { "status": "active", "description": "Backups chiffrés restaurables" },
+    "cloudflare_tunnel": { "status": "optional", "description": "Accès distant via tunnel" },
+    "avatar_2d": { "status": "basic", "description": "Avatar CSS animé" },
+    "image_safe": { "status": "planned", "description": "Images illustratives non explicites" },
+    "tts_local_premium": { "status": "planned", "description": "Voix locale encore plus naturelle (XTTS)" },
+    "stt_local_premium": { "status": "planned", "description": "Whisper.cpp local" },
+    "multi_model_router": { "status": "planned", "description": "Router LLM local/API selon coût/qualité" },
+    "marketplace_personas": { "status": "planned", "description": "Import/export de personnalités validées" }
+  }
+}
