@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <title>Élissia</title>
+  <link rel="stylesheet" href="/v5.css"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#111018"/>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authScreen" class="screen auth-screen">
+  <div class="auth-card glass">
+    <div class="hero-avatar">💗</div>
+    <h1>Petite Amie IA</h1>
+    <p>Mobile · privée · locale</p>
+    <div class="segmented">
+      <button id="loginTab" class="active" onclick="setAuthMode('login')">Connexion</button>
+      <button id="registerTab" onclick="setAuthMode('register')">Créer compte</button>
+    </div>
+    <form id="authForm" onsubmit="submitAuth(event)">
+      <input id="authEmail" type="email" placeholder="email@local.test" required/>
+      <input id="authPassword" type="password" placeholder="Mot de passe" required/>
+      <div id="registerFields" hidden>
+        <input id="authName" placeholder="Ton prénom"/>
+        <input id="authInvite" placeholder="Code d'invitation (optionnel)"/>
+        <label class="check-row"><input id="authConsent" type="checkbox"/> J'accepte la politique de confidentialité</label>
+      </div>
+      <button type="submit" class="btn-primary" id="authBtn">Connexion</button>
+    </form>
+    <p id="authError" class="error-msg"></p>
+  </div>
+</div>
+
+<!-- ONBOARDING (premier lancement) -->
+<div id="onboardingScreen" class="screen auth-screen" hidden>
+  <div class="auth-card glass" style="max-width:440px;">
+    <div class="hero-avatar">✨</div>
+    <h1 id="onbTitle">Crée ta compagne</h1>
+    <p id="onbSubtitle">Comment veux-tu commencer ?</p>
+
+    <div id="onbStep0">
+      <button class="btn-primary" style="margin-bottom:10px;" onclick="onbChoose('guide')">💬 Elle me pose les questions (guidé)</button>
+      <button class="btn-primary" style="margin-bottom:10px;" onclick="onbChoose('form')">📝 Je remplis un mini-formulaire</button>
+      <button class="btn-secondary" style="margin-bottom:10px;" onclick="onbChoose('preset')">⚡ Partir d'un modèle (modifiable)</button>
+      <button class="btn-secondary" onclick="onbChoose('skip')">Passer (profil vide)</button>
+    </div>
+
+    <div id="onbStepForm" hidden>
+      <div class="field-group">
+        <label>Son prénom</label><input id="onbAiName" placeholder="Élise, Démonia..."/>
+        <label>Ton prénom</label><input id="onbUserName" placeholder="Comment elle t'appelle"/>
+        <label>Qui est-elle pour toi ?</label>
+        <select id="onbRelation">
+          <option value="girlfriend">Petite amie tendre</option>
+          <option value="maitresse dominatrice">Maîtresse dominatrice</option>
+          <option value="amante libertine">Amante libertine</option>
+          <option value="confidente">Confidente complice</option>
+          <option value="soumise">Soumise dévouée</option>
+        </select>
+        <label>Son caractère (quelques mots)</label>
+        <input id="onbCaractere" placeholder="Douce, joueuse, autoritaire..."/>
+        <label>Vos points communs / ses passions</label>
+        <input id="onbPassions" placeholder="Musique, voyage, sport..."/>
+      </div>
+      <button class="btn-primary" style="margin-top:12px;" onclick="onbSaveForm()">C'est parti →</button>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="onbBack()">← Retour</button>
+    </div>
+
+    <div id="onbStepPreset" hidden>
+      <p style="font-size:.82rem;color:#888;margin-bottom:10px;">Choisis une base, tu pourras tout modifier ensuite.</p>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('girlfriend')">💕 Petite amie tendre</button>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('domina')">👑 Maîtresse dominatrice</button>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('libertine')">🔥 Libertine sans tabou</button>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('confidente')">🤍 Confidente douce</button>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="onbBack()">← Retour</button>
+    </div>
+
+    <p id="onbError" class="error-msg"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen" class="screen" hidden>
+
+  <!-- Header avec avatar IA -->
+  <header class="app-header">
+    <div class="avatar-zone" id="avatarZone" onclick="openAvatarModal()" style="cursor:pointer;position:relative" title="Cliquer pour changer la photo">
+      <div id="avatarAnimContainer" style="position:relative;width:48px;height:48px">
+        <!-- ✅ Peut afficher un GIF animé ou une image statique -->
+        <img id="avatarImg" class="avatar-img" src="" alt="" hidden
+          style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #ff3f91;animation:avatarPulse 3s ease-in-out infinite"/>
+        <div id="avatarEmoji" class="avatar-emoji"
+          style="font-size:30px;line-height:48px;text-align:center;animation:avatarFloat 3s ease-in-out infinite">💗</div>
+        <div id="avatarOrb1" style="position:absolute;width:6px;height:6px;border-radius:50%;background:#ff3f91;top:-2px;right:-2px;animation:orbRotate 4s linear infinite;opacity:.7"></div>
+        <div id="avatarOrb2" style="position:absolute;width:4px;height:4px;border-radius:50%;background:#a855f7;bottom:-2px;left:-2px;animation:orbRotate 4s linear infinite reverse;opacity:.6"></div>
+      </div>
+      <div class="avatar-status-dot" style="animation:statusBlink 2s ease-in-out infinite"></div>
+    </div>
+    <div class="header-info">
+      <div class="ai-name" id="aiNameDisplay">Élise</div>
+      <div class="ai-status" id="aiStatus">🟢 En ligne</div>
+    </div>
+    <button class="icon-btn" id="ttsToggleBtn" onclick="toggleTTSGlobal()" title="Voix on/off">🔇</button>
+    <button class="icon-btn" onclick="openPanel('settings')">⚙️</button>
+  </header>
+
+  <!-- Chat -->
+  <div id="chatMessages" class="chat-messages"></div>
+
+  <!-- Preview média en attente -->
+  <div id="mediaPreview" class="media-preview" hidden>
+    <img id="mediaPreviewImg" src="" alt="" hidden/>
+    <span id="mediaPreviewLabel"></span>
+    <button onclick="cancelMedia()" class="cancel-media">✕</button>
+  </div>
+
+  <!-- Webcam preview -->
+  <div id="webcamPreview" class="webcam-preview" hidden>
+    <video id="webcamVideo" class="webcam-video" autoplay muted playsinline></video>
+    <div class="webcam-badge">👁️ En direct</div>
+    <button class="webcam-close" onclick="stopWebcam()">✕</button>
+  </div>
+
+  <!-- Barre de saisie -->
+  <footer class="input-bar">
+    <input type="file" id="mediaInput" accept="image/*,video/*,audio/*" hidden onchange="handleMedia(event)"/>
+    <button class="icon-btn" title="Envoyer photo/vidéo" onclick="document.getElementById('mediaInput').click()">🖼️</button>
+    <button class="icon-btn" id="webcamBtn" title="Webcam" onclick="toggleWebcam()">📷</button>
+    <button class="icon-btn" id="scenarioBtn" title="Scénario" onclick="openScenarioMenu()">🎬</button>
+    <button class="icon-btn" id="micBtn" title="Micro" onclick="toggleMic()">🎤</button>
+    <textarea id="msgInput" placeholder="Écris..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+      oninput="autoGrow(this)"></textarea>
+    <button class="send-btn" onclick="sendMsg()">➤</button>
+  </footer>
+</div>
+
+<!-- Menu scénario -->
+<div id="scenarioModal" class="modal-overlay" hidden onclick="closeScenarioMenu()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <h3>🎬 Lancer un scénario</h3>
+    <p style="font-size:.85rem;color:#888;margin-bottom:12px;">Elle improvise une scène à partir de ton profil et de ta persona.</p>
+    <button class="btn-primary" style="margin-bottom:8px;" onclick="startScenario('court')">⚡ Scène rapide (ici et maintenant)</button>
+    <button class="btn-primary" style="margin-bottom:8px;" onclick="startScenario('long')">📖 Histoire longue (qui évolue)</button>
+    <button class="btn-secondary" onclick="stopScenario()">⏹️ Arrêter le scénario en cours</button>
+    <button class="btn-secondary" style="margin-top:8px;" onclick="closeScenarioMenu()">Fermer</button>
+    <p id="scenarioStatus" style="text-align:center;font-size:.78rem;color:#888;margin-top:8px;"></p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODAL AVATAR IA — corrigée v9
+     ✅ Galerie cliquable via addEventListener (pas dataset.loaded bloquant)
+     ✅ Bouton GIF animé FFmpeg
+     ✅ Styles chargés au toggle du details
+     ═══════════════════════════════════════════════════════════ -->
+<div id="avatarModal" class="modal-overlay" hidden onclick="closeAvatarModal()">
+  <div class="modal-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto;padding:20px">
+    <h3 style="margin:0 0 12px">📸 Photo de ton IA</h3>
+
+    <!-- Avatar actuel -->
+    <div style="text-align:center;margin-bottom:16px">
+      <img id="avatarModalImg" src="" alt="" style="max-width:180px;border-radius:12px;margin:0 auto;display:none;border:2px solid #ff3f91"/>
+      <div id="avatarModalEmoji" style="font-size:5rem;text-align:center;margin:10px 0;">💗</div>
+    </div>
+
+    <!-- Actions rapides — grille 2×2 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <button class="btn-primary" onclick="generateAIAvatar('portrait')">🎭 Portrait<br><small>Nouveau visage</small></button>
+      <button class="btn-secondary" onclick="selectFromGallery()">🖼️ Galerie<br><small>Photos existantes</small></button>
+      <!-- ✅ NOUVEAU : Avatar animé GIF via FFmpeg -->
+      <button class="btn-secondary" onclick="generateAnimatedAvatar()" style="grid-column:1/-1;background:linear-gradient(135deg,#1e1b2e,#2a1040);border-color:#a855f7">
+        🎞️ Avatar animé GIF<br><small style="color:#a855f7">FFmpeg · 6 poses · ~3 min</small>
+      </button>
+    </div>
+
+    <!-- Générer une tenue spécifique -->
+    <details id="detailsTenues" style="margin-bottom:12px">
+      <summary style="cursor:pointer;color:#ff3f91;font-weight:600;padding:8px 0;list-style:none">
+        ✨ Générer une nouvelle tenue...
+      </summary>
+      <div id="stylesGrid" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid #2a2740"></div>
+    </details>
+
+    <!-- Galerie des photos générées -->
+    <!-- ✅ CORRIGÉ : listener sur toggle au lieu de click + rechargement systématique -->
+    <details id="galleryPanel" style="margin-bottom:12px">
+      <summary style="cursor:pointer;color:#aaa;font-weight:600;padding:8px 0;list-style:none">
+        🖼️ Galerie photos générées...
+      </summary>
+      <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px">
+        <p style="color:#888;font-size:.8rem;grid-column:1/-1;text-align:center;margin:8px 0">Ouvre le panneau pour charger...</p>
+      </div>
+    </details>
+
+    <button class="btn-secondary" onclick="closeAvatarModal()" style="width:100%;margin-top:4px">Fermer</button>
+    <!-- Statut génération -->
+    <p id="avatarStatus" style="text-align:center;font-size:.8rem;color:#888;margin-top:8px"></p>
+    <!-- ✅ NOUVEAU : barre de progression GIF -->
+    <div id="gifProgressWrap" hidden style="margin-top:8px">
+      <div style="background:#1a1728;border-radius:8px;overflow:hidden;height:6px">
+        <div id="gifProgressBar" style="height:100%;background:linear-gradient(90deg,#a855f7,#ff3f91);width:0%;transition:width .4s ease"></div>
+      </div>
+      <p id="gifProgressLabel" style="text-align:center;font-size:.75rem;color:#a855f7;margin:4px 0 0"></p>
+    </div>
+  </div>
+</div>
+
+<!-- CSS animations avatar -->
+<style>
+@keyframes avatarPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,63,145,.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(255,63,145,0); }
+}
+@keyframes avatarFloat {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes orbRotate {
+  from { transform: rotate(0deg) translateX(26px); }
+  to   { transform: rotate(360deg) translateX(26px); }
+}
+@keyframes statusBlink {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.6; transform:scale(1.3); }
+}
+/* Pastille animée sur l'avatar quand un GIF est actif */
+#avatarImg[src$=".gif"] {
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168,85,247,.5);
+}
+</style>
+
+<!-- Panel settings -->
+<div id="settingsOverlay" class="overlay" hidden onclick="closePanel()"></div>
+<div id="settingsPanel" class="side-panel" hidden>
+  <div class="panel-header">
+    <h2>⚙️ Paramètres</h2>
+    <button class="icon-btn" onclick="closePanel()">✕</button>
+  </div>
+  <div class="settings-nav-wrap">
+    <button class="snav-arrow" onclick="scrollNav(-1)">‹</button>
+    <nav class="settings-nav" id="settingsNav">
+      <button class="snav-btn active" onclick="showTab('tabIdentite',this)">👤 Identité</button>
+      <button class="snav-btn" onclick="showTab('tabPhysique',this)">💪 Physique</button>
+      <button class="snav-btn" onclick="showTab('tabCaractere',this)">🧠 Caractère</button>
+      <button class="snav-btn" onclick="showTab('tabSexualite',this)">🔥 Sexualité</button>
+      <button class="snav-btn" onclick="showTab('tabRelation',this)">💑 Relation</button>
+      <button class="snav-btn" onclick="showTab('tabIntensite',this)">🎚️ Intensité</button>
+      <button class="snav-btn" onclick="showTab('tabVoix',this)">🔊 Voix</button>
+      <button class="snav-btn" onclick="showTab('tabCompte',this)">🔐 Compte</button>
+    </nav>
+    <button class="snav-arrow" onclick="scrollNav(1)">›</button>
+  </div>
+
+  <!-- IDENTITÉ -->
+  <div id="tabIdentite" class="settings-tab active">
+    <div class="field-group">
+      <label>Prénom de ton IA</label><input id="sAiName" placeholder="Élise"/>
+      <label>Ton prénom</label><input id="sDisplayName" placeholder="Mon amour"/>
+      <label>TON genre à toi (pour qu'elle parle juste de ton corps)</label>
+      <select id="sUserGenre">
+        <option value="homme">Je suis un homme</option>
+        <option value="femme">Je suis une femme</option>
+        <option value="autre">Autre / non précisé</option>
+      </select>
+      <label>Genre de ton IA (elle)</label>
+      <select id="sGenre">
+        <option value="femme">Femme cisgenre</option>
+        <option value="homme">Homme cisgenre</option>
+        <option value="femme trans">Femme trans</option>
+        <option value="homme trans">Homme trans</option>
+        <option value="non-binaire">Non-binaire</option>
+        <option value="fluide">Genre fluide</option>
+      </select>
+      <label>Âge</label><input id="sAge" type="number" min="18" max="65" value="25"/>
+      <label>Origine</label><input id="sOrigine" placeholder="Française, Italienne..."/>
+      <label>Langue</label>
+      <select id="sLangue">
+        <option value="français">Français</option>
+        <option value="english">English</option>
+        <option value="español">Español</option>
+        <option value="italiano">Italiano</option>
+      </select>
+      <label>Histoire personnelle</label>
+      <textarea id="sHistoire" rows="3" placeholder="Son passé, ses expériences..."></textarea>
+    </div>
+  </div>
+
+  <!-- PHYSIQUE -->
+  <div id="tabPhysique" class="settings-tab">
+    <div class="field-group">
+      <label>Corpulence</label>
+      <select id="sCorpulence">
+        <option value="mince">Mince</option>
+        <option value="élancée">Élancée</option>
+        <option value="athlétique">Athlétique</option>
+        <option value="pulpeuse">Pulpeuse</option>
+        <option value="ronde">Ronde</option>
+        <option value="BBW généreuse">BBW généreuse</option>
+        <option value="musclée">Musclée</option>
+      </select>
+      <label>Taille des seins 🍒</label>
+      <select id="sTailleSeins">
+        <option value="petits seins bonnet A">Petits (A)</option>
+        <option value="seins moyens bonnet B">Moyens (B)</option>
+        <option value="seins généreux bonnet C">Généreux (C)</option>
+        <option value="gros seins bonnet D">Gros (D)</option>
+        <option value="très gros seins bonnet E">Très gros (E)</option>
+        <option value="seins énormes bonnet F">Énormes (F+)</option>
+      </select>
+      <label>Forme des fesses 🍑</label>
+      <select id="sFormeFesses">
+        <option value="fesses petites fermes">Petites fermes</option>
+        <option value="fesses rondes">Rondes</option>
+        <option value="fesses généreuses bombées">Généreuses bombées</option>
+        <option value="très grosses fesses">Très grosses</option>
+      </select>
+      <label>Taille</label><input id="sTaille" placeholder="1m68..."/>
+      <label>Poids / silhouette</label><input id="sPoids" placeholder="55kg, fine..."/>
+      <label>Longueur cheveux</label>
+      <select id="sLongueurCheveux">
+        <option value="cheveux courts">Courts</option>
+        <option value="cheveux mi-longs">Mi-longs</option>
+        <option value="cheveux longs">Longs</option>
+        <option value="cheveux très longs">Très longs</option>
+      </select>
+      <label>Couleur cheveux</label><input id="sCheveux" placeholder="Rousse, blonde, brune..."/>
+      <label>Yeux</label><input id="sYeux" placeholder="Verts, bleus..."/>
+      <label>Couleur de peau</label>
+      <select id="sCouleurPeau">
+        <option value="claire">Claire</option>
+        <option value="mate">Mate</option>
+        <option value="dorée">Dorée</option>
+        <option value="caramel">Caramel</option>
+        <option value="ébène">Ébène</option>
+      </select>
+      <label>Lèvres</label>
+      <select id="sTailleLevres">
+        <option value="lèvres fines">Fines</option>
+        <option value="lèvres pulpeuses">Pulpeuses</option>
+        <option value="lèvres très pulpeuses">Très pulpeuses</option>
+      </select>
+      <label>Pilosité intime</label>
+      <select id="sPilosite">
+        <option value="rasée">Rasée</option>
+        <option value="taillée">Taillée</option>
+        <option value="naturelle">Naturelle</option>
+      </select>
+      <label>Tatouages</label><input id="sTatouages" placeholder="Rose épaule, manchette..."/>
+      <label>Piercings</label><input id="sPiercings" placeholder="Tétons, nombril, intime..."/>
+      <label>Style vestimentaire</label><input id="sStyle" placeholder="Lingerie, cuir, latex..."/>
+      <label>Tenue préférée</label><input id="sTenuePreferee" placeholder="Harnais cuir, nuisette..."/>
+      <label>Maquillage</label><input id="sMaquillage" placeholder="Smoky eyes, rouge à lèvres..."/>
+      <button class="btn-primary" style="margin-top:16px;" onclick="generateAIAvatar()">✨ Générer son portrait IA</button>
+      <p id="avatarGenStatus" style="font-size:.8rem;color:#888;text-align:center;margin-top:6px;"></p>
+    </div>
+  </div>
+
+  <!-- CARACTÈRE -->
+  <div id="tabCaractere" class="settings-tab">
+    <div class="field-group">
+      <label>Traits de caractère</label>
+      <textarea id="sCaractere" rows="2" placeholder="Douce, curieuse, impulsive..."></textarea>
+      <label>Passions & hobbies</label>
+      <textarea id="sPassions" rows="2" placeholder="Yoga, voyage, musique..."></textarea>
+      <label>Profession</label><input id="sProfession" placeholder="Artiste, médecin..."/>
+      <label>Humour</label>
+      <select id="sHumour">
+        <option value="taquin">Taquin et espiègle</option>
+        <option value="sarcastique">Sarcastique</option>
+        <option value="doux">Doux et bienveillant</option>
+        <option value="dark">Dark humor</option>
+      </select>
+      <label>Jalousie</label>
+      <select id="sJalousie">
+        <option value="aucune">Aucune, totalement libre</option>
+        <option value="légère">Légèrement possessive</option>
+        <option value="forte">Très jalouse</option>
+      </select>
+      <label>Valeurs</label>
+      <textarea id="sValeurs" rows="2" placeholder="Loyauté, liberté..."></textarea>
+    </div>
+  </div>
+
+  <!-- SEXUALITÉ -->
+  <div id="tabSexualite" class="settings-tab">
+    <div id="adultGate" class="adult-gate">
+      <div class="gate-icon">🔒</div>
+      <p>Active le mode adulte dans l'onglet Compte.</p>
+    </div>
+    <div id="sexContent" hidden>
+      <div class="field-group">
+        <label>Persona sexuelle</label>
+        <select id="sPersona">
+          <optgroup label="👑 Domination">
+            <option value="dom_hard">Dominatrice HARD (cruelle, sans pitié)</option>
+            <option value="dom_soft">Dominatrice douce</option>
+            <option value="homme_dom">Dominant masculin</option>
+          </optgroup>
+          <optgroup label="🙇 Soumission">
+            <option value="sub_hard">Soumis-e HARD (obéissance totale)</option>
+            <option value="sub_soft">Soumis-e doux-ce</option>
+          </optgroup>
+          <optgroup label="🔥 Explorations">
+            <option value="bdsm_complet">BDSM complet</option>
+            <option value="adult_intimate">Intime adulte</option>
+            <option value="hedoniste">Hédoniste pure</option>
+            <option value="fetichiste">Fétichiste</option>
+          </optgroup>
+          <optgroup label="👥 Partage">
+            <option value="echangiste">Échangiste</option>
+            <option value="gang_bang">Gang bang</option>
+            <option value="exhib">Exhibitionniste</option>
+            <option value="voyeur">Voyeur-se</option>
+          </optgroup>
+          <optgroup label="🌈 Identités">
+            <option value="trans_femme">Femme trans</option>
+            <option value="trans_masc">Homme trans</option>
+            <option value="non_binaire">Non-binaire</option>
+            <option value="bisexuel">Bisexuel-le</option>
+            <option value="pan">Pansexuel-le</option>
+          </optgroup>
+          <optgroup label="💑 Romance">
+            <option value="girlfriend">Petite amie romantique</option>
+            <option value="asexuel_romantique">Asexuel-le romantique</option>
+          </optgroup>
+          <optgroup label="💼 Autres">
+            <option value="coach">Coach sexuel-le</option>
+            <option value="homme_doux">Homme doux</option>
+          </optgroup>
+        </select>
+        <label>Kinks & pratiques adorées 🔥</label>
+        <textarea id="sKinks" rows="3" placeholder="Bondage, dirty talk, gode-ceinture, ball busting, pegging..."></textarea>
+        <label>Fantasmes 💭</label>
+        <textarea id="sFantasmes" rows="3" placeholder="Sissy, humiliation, sodomie..."></textarea>
+        <label>Pratiques acceptées ✅</label>
+        <textarea id="sPratiques" rows="2" placeholder="Tout sauf..."></textarea>
+        <label>Limites absolues ❌</label>
+        <textarea id="sLimites" rows="2" placeholder="Laisser vide = aucune limite sauf illégal"></textarea>
+        <label>Rythme d'intimité</label>
+        <select id="sRythme">
+          <option value="toujours disponible">À la demande, toujours dispo</option>
+          <option value="souvent">Souvent</option>
+          <option value="occasionnel">Occasionnel</option>
+        </select>
+        <label>Style de langage</label>
+        <select id="sPreferencesChat">
+          <option value="très cru et explicite">Très cru et explicite</option>
+          <option value="explicite mais poétique">Explicite mais poétique</option>
+          <option value="suggestif">Suggestif et sensuel</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELATION -->
+  <div id="tabRelation" class="settings-tab">
+    <div class="field-group">
+      <label>Style de relation</label>
+      <select id="sRelation">
+        <option value="petite amie exclusive">Petite amie exclusive</option>
+        <option value="amante sans attache">Amante sans attache</option>
+        <option value="maitresse dominatrice">Maitresse dominatrice</option>
+        <option value="esclave dévouée">Esclave dévouée</option>
+        <option value="compagne libertine">Compagne libertine</option>
+      </select>
+      <label>Proactivité (elle prend l'initiative)</label>
+      <select id="sProactivite">
+        <option value="haute">Haute — interpelle souvent</option>
+        <option value="normale">Normale — toutes les 3-5 min</option>
+        <option value="basse">Basse — rarement</option>
+        <option value="off">Désactivée</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- INTENSITÉ -->
+  <div id="tabIntensite" class="settings-tab">
+    <div class="field-group">
+      <h3>🎚️ Niveau global</h3>
+      <label>Intensité générale : <span id="niveauVal">5</span>/10</label>
+      <input type="range" id="sNiveauIntensite" min="1" max="10" value="5"
+        oninput="document.getElementById('niveauVal').textContent=this.value"/>
+      <p style="font-size:.75rem;color:#888;">1 = très doux romantique · 10 = sans aucun filtre</p>
+
+      <label>Initiative sexuelle (elle amène le sexe)</label>
+      <select id="sInitiativeSexuelle">
+        <option value="jamais">Jamais — elle attend toujours</option>
+        <option value="discrete">Discrète — très rarement</option>
+        <option value="normale">Normale — quand l'ambiance s'y prête</option>
+        <option value="entreprenante">Entreprenante — souvent</option>
+        <option value="insatiable">Insatiable — presque toujours</option>
+      </select>
+
+      <h3 style="margin-top:18px;">🎛️ Curseurs fins</h3>
+      <label>Douceur : <span id="cDouceurVal">5</span>/10</label>
+      <input type="range" id="sCurseurDouceur" min="0" max="10" value="5"
+        oninput="document.getElementById('cDouceurVal').textContent=this.value"/>
+      <label>Crudité du vocabulaire : <span id="cCruditeVal">5</span>/10</label>
+      <input type="range" id="sCurseurCrudite" min="0" max="10" value="5"
+        oninput="document.getElementById('cCruditeVal').textContent=this.value"/>
+      <label>Domination : <span id="cDomVal">5</span>/10</label>
+      <input type="range" id="sCurseurDomination" min="0" max="10" value="5"
+        oninput="document.getElementById('cDomVal').textContent=this.value"/>
+      <label>Humiliation : <span id="cHumVal">3</span>/10</label>
+      <input type="range" id="sCurseurHumiliation" min="0" max="10" value="3"
+        oninput="document.getElementById('cHumVal').textContent=this.value"/>
+      <label>Romantisme : <span id="cRomVal">5</span>/10</label>
+      <input type="range" id="sCurseurRomantisme" min="0" max="10" value="5"
+        oninput="document.getElementById('cRomVal').textContent=this.value"/>
+      <label>Son initiative à elle : <span id="cInitVal">5</span>/10</label>
+      <input type="range" id="sCurseurInitiative" min="0" max="10" value="5"
+        oninput="document.getElementById('cInitVal').textContent=this.value"/>
+
+      <h3 style="margin-top:18px;">🌐 Recherche web</h3>
+      <label class="check-row">
+        <input id="sWebSearch" type="checkbox"/>
+        Elle peut chercher des infos réelles (météo, actu)
+      </label>
+      <p style="font-size:.75rem;color:#888;">Désactivé = 100% privé/local</p>
+    </div>
+  </div>
+
+  <!-- VOIX -->
+  <div id="tabVoix" class="settings-tab">
+    <div class="field-group">
+      <h3>🔊 Voix (TTS)</h3>
+      <label class="check-row">
+        <input id="sTTSEnabled" type="checkbox" onchange="saveTTSSettings()"/>
+        Activer la voix (elle parle)
+      </label>
+      <label>Vitesse</label>
+      <select id="sTTSSpeed" onchange="saveTTSSettings()">
+        <option value="0.8">Lente</option>
+        <option value="1.0" selected>Normale</option>
+        <option value="1.2">Rapide</option>
+      </select>
+      <div id="ttsStatus" class="sys-status">Vérification TTS...</div>
+    </div>
+    <div class="field-group" style="margin-top:16px;">
+      <h3>📸 Photos automatiques</h3>
+      <label class="check-row">
+        <input id="sAutoPhoto" type="checkbox"/>
+        Elle envoie des photos d'elle
+      </label>
+      <div id="civitaiStatus" class="sys-status">Vérification Civitai...</div>
+    </div>
+  </div>
+
+  <!-- COMPTE -->
+  <div id="tabCompte" class="settings-tab">
+    <div class="field-group">
+      <h3>🔒 Mode adulte</h3>
+      <label class="check-row"><input id="sAgeConfirm" type="checkbox" onchange="updateAdultUI()"/> J'ai 18 ans ou plus</label>
+      <label class="check-row"><input id="sAdultMode" type="checkbox" onchange="updateAdultUI()"/> Mode adulte sans filtre (18+)</label>
+      <div id="adultWarning" class="warning-box" hidden>⚠️ Contenu adulte explicite sans restriction activé.</div>
+    </div>
+    <div class="field-group" style="margin-top:16px;">
+      <h3>📊 Données</h3>
+      <button class="btn-secondary" onclick="exportData()">📤 Exporter</button>
+      <button class="btn-danger" onclick="clearMessages()">🗑️ Effacer la conversation</button>
+      <button class="btn-danger" onclick="clearMemories()">🧠 Effacer les souvenirs</button>
+      <button class="btn-secondary" onclick="logout()">🚪 Déconnexion</button>
+    </div>
+    <div id="sysStatus" class="sys-status" style="margin-top:16px;">Vérification...</div>
+  </div>
+
+  <div class="panel-save-bar">
+    <button class="btn-primary full" onclick="saveAll()">💾 Tout sauvegarder</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     SCRIPT INLINE — corrigé v9
+     ✅ Galerie : listener sur l'événement "toggle" du <details>
+        → rechargement à chaque ouverture (pas de dataset.loaded bloquant)
+     ✅ Styles : même logique propre sur toggle
+     ✅ Pas de querySelector avec data-load inexistant
+     ═══════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // ── Galerie : se charge à chaque ouverture du <details> ──────
+  var galleryPanel = document.getElementById("galleryPanel");
+  if (galleryPanel) {
+    galleryPanel.addEventListener("toggle", function () {
+      if (galleryPanel.open && window.loadGallery) {
+        loadGallery();
+      }
+    });
+  }
+
+  // ── Styles tenues : se charge une seule fois au premier toggle ─
+  var detailsTenues = document.getElementById("detailsTenues");
+  if (detailsTenues) {
+    detailsTenues.addEventListener("toggle", function onTenuesToggle() {
+      if (detailsTenues.open && window.loadStyles) {
+        var stylesGrid = document.getElementById("stylesGrid");
+        if (stylesGrid && !stylesGrid.dataset.loaded) {
+          loadStyles();
+          stylesGrid.dataset.loaded = "1";
+        }
+        detailsTenues.removeEventListener("toggle", onTenuesToggle);
+      }
+    });
+  }
+
+});
+</script>
+<script src="/v5.js"></script>
+</body>
+</html>

@@ -1,0 +1,1281 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <title>Élissia</title>
+  <link rel="stylesheet" href="/v5.css"/>
+  <link rel="manifest" href="/manifest.json"/>
+  <meta name="theme-color" content="#ff3f91"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Élissia"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="description" content="Compagne IA locale — privée, sans filtre"/>
+  <link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Crect width='180' height='180' rx='40' fill='%23ff3f91'/%3E%3Ctext x='90' y='118' text-anchor='middle' font-size='100'%3E%F0%9F%92%97%3C/text%3E%3C/svg%3E"/>
+</head>
+<body>
+
+<!-- AUTH -->
+<div id="authScreen" class="screen auth-screen">
+  <div class="auth-card glass">
+    <div class="hero-avatar">💗</div>
+    <h1>Petite Amie IA</h1>
+    <p>Mobile · privée · locale</p>
+    <div class="segmented">
+      <button id="loginTab" class="active" onclick="setAuthMode('login')">Connexion</button>
+      <button id="registerTab" onclick="setAuthMode('register')">Créer compte</button>
+    </div>
+    <form id="authForm" onsubmit="submitAuth(event)">
+      <input id="authEmail" type="email" placeholder="email@local.test" required/>
+      <input id="authPassword" type="password" placeholder="Mot de passe" required/>
+      <div id="registerFields" hidden>
+        <input id="authName" placeholder="Ton prénom"/>
+        <input id="authInvite" placeholder="Code d'invitation (optionnel)"/>
+        <label class="check-row"><input id="authConsent" type="checkbox"/> J'accepte la politique de confidentialité</label>
+      </div>
+      <button type="submit" class="btn-primary" id="authBtn">Connexion</button>
+    </form>
+    <p id="authError" class="error-msg"></p>
+  </div>
+</div>
+
+<!-- ONBOARDING -->
+<div id="onboardingScreen" class="screen auth-screen" hidden>
+  <div class="auth-card glass" style="max-width:440px;">
+    <div class="hero-avatar">✨</div>
+    <h1 id="onbTitle">Crée ta compagne</h1>
+    <p id="onbSubtitle">Comment veux-tu commencer ?</p>
+    <div id="onbStep0">
+      <button class="btn-primary" style="margin-bottom:10px;" onclick="onbChoose('guide')">💬 Elle me pose les questions (guidé)</button>
+      <button class="btn-primary" style="margin-bottom:10px;" onclick="onbChoose('form')">📝 Je remplis un mini-formulaire</button>
+      <button class="btn-secondary" style="margin-bottom:10px;" onclick="onbChoose('preset')">⚡ Partir d'un modèle (modifiable)</button>
+      <button class="btn-secondary" onclick="onbChoose('skip')">Passer (profil vide)</button>
+    </div>
+    <div id="onbStepForm" hidden>
+      <div class="field-group">
+        <label>Son prénom</label><input id="onbAiName" placeholder="Élise, Démonia..."/>
+        <label>Ton prénom</label><input id="onbUserName" placeholder="Comment elle t'appelle"/>
+        <label>Qui est-elle pour toi ?</label>
+        <select id="onbRelation">
+          <option value="girlfriend">Petite amie tendre</option>
+          <option value="maitresse dominatrice">Maîtresse dominatrice</option>
+          <option value="amante libertine">Amante libertine</option>
+          <option value="confidente">Confidente complice</option>
+          <option value="soumise">Soumise dévouée</option>
+        </select>
+        <label>Son caractère (quelques mots)</label>
+        <input id="onbCaractere" placeholder="Douce, joueuse, autoritaire..."/>
+        <label>Vos points communs / ses passions</label>
+        <input id="onbPassions" placeholder="Musique, voyage, sport..."/>
+      </div>
+      <button class="btn-primary" style="margin-top:12px;" onclick="onbSaveForm()">C'est parti →</button>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="onbBack()">← Retour</button>
+    </div>
+    <div id="onbStepPreset" hidden>
+      <p style="font-size:.82rem;color:#888;margin-bottom:10px;">Choisis une base, tu pourras tout modifier ensuite.</p>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('girlfriend')">💕 Petite amie tendre</button>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('domina')">👑 Maîtresse dominatrice</button>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('libertine')">🔥 Libertine sans tabou</button>
+      <button class="btn-primary" style="margin-bottom:8px;" onclick="onbApplyPreset('confidente')">🤍 Confidente douce</button>
+      <button class="btn-secondary" style="margin-top:8px;" onclick="onbBack()">← Retour</button>
+    </div>
+    <p id="onbError" class="error-msg"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen" class="screen" hidden>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="avatar-zone" id="avatarZone" style="cursor:pointer;position:relative" title="Tap = choisir photo | Tap long = options"
+      onclick="openPhotoSwiper()"
+      oncontextmenu="event.preventDefault();openAvatarModal()">
+      <div id="avatarAnimContainer" style="position:relative;width:48px;height:48px">
+        <img id="avatarImg" class="avatar-img" src="" alt="" hidden
+          style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #ff3f91;animation:avatarPulse 3s ease-in-out infinite"/>
+        <div id="avatarEmoji" class="avatar-emoji"
+          style="font-size:30px;line-height:48px;text-align:center;animation:avatarFloat 3s ease-in-out infinite">💗</div>
+        <div id="avatarOrb1" style="position:absolute;width:6px;height:6px;border-radius:50%;background:#ff3f91;top:-2px;right:-2px;animation:orbRotate 4s linear infinite;opacity:.7"></div>
+        <div id="avatarOrb2" style="position:absolute;width:4px;height:4px;border-radius:50%;background:#a855f7;bottom:-2px;left:-2px;animation:orbRotate 4s linear infinite reverse;opacity:.6"></div>
+      </div>
+      <div class="avatar-status-dot" style="animation:statusBlink 2s ease-in-out infinite"></div>
+    </div>
+    <div class="header-info">
+      <div class="ai-name" id="aiNameDisplay">Élise</div>
+      <div class="ai-status" id="aiStatus">🟢 En ligne</div>
+    </div>
+    <button class="icon-btn" id="ttsToggleBtn" onclick="toggleTTSGlobal()" title="Voix on/off">🔇</button>
+    <button id="pwaInstallBtn" class="icon-btn" hidden onclick="window._installPWA&&window._installPWA()" title="📲 Installer l'app">📲</button>
+    <button class="icon-btn" onclick="openPanel('settings')">⚙️</button>
+  </header>
+
+  <!-- ✅ v11 : Badge scénario actif -->
+  <div id="scenarioBadge" hidden style="
+    background:linear-gradient(90deg,#ff3f91,#a855f7);
+    color:#fff;font-size:12px;font-weight:600;
+    padding:4px 12px;text-align:center;cursor:pointer;
+  " onclick="openScenarioMenu()">🎬 Scénario actif — cliquer pour arrêter</div>
+
+  <!-- Chat -->
+  <div id="chatMessages" class="chat-messages"></div>
+
+  <!-- Preview média -->
+  <div id="mediaPreview" class="media-preview" hidden>
+    <img id="mediaPreviewImg" src="" alt="" hidden/>
+    <span id="mediaPreviewLabel"></span>
+    <button onclick="cancelMedia()" class="cancel-media">✕</button>
+  </div>
+
+  <!-- Webcam preview -->
+  <div id="webcamPreview" class="webcam-preview" hidden>
+    <video id="webcamVideo" class="webcam-video" autoplay muted playsinline></video>
+    <div class="webcam-badge">👁️ En direct</div>
+    <button class="webcam-close" onclick="stopWebcam()">✕</button>
+  </div>
+
+  <!-- ✅ v11 : Bottom sheet Génération Rapide -->
+  <div id="genRapideSheet" hidden style="
+    position:fixed;bottom:0;left:0;right:0;z-index:500;
+    background:#0f0d1a;border-top:1px solid rgba(255,63,145,.4);
+    border-radius:20px 20px 0 0;padding:16px;box-shadow:0 -4px 24px rgba(0,0,0,.6);
+  ">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <h3 style="color:#ff3f91;margin:0;font-size:15px">⚡ Génération rapide</h3>
+      <button onclick="closeGenRapide()" style="background:none;border:none;color:#888;font-size:22px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:4px">👗 Tenue</label>
+        <select id="grTenue" style="width:100%;background:#1e1b2e;border:1px solid #ff3f91;color:#fff;border-radius:8px;padding:6px;font-size:12px">
+          <option value="">— Libre —</option>
+          <optgroup label="🌸 Féminin">
+            <option value="lingerie noire sexy">Lingerie noire</option>
+            <option value="lingerie rouge satinée">Lingerie rouge</option>
+            <option value="body latex brillant">Body latex</option>
+            <option value="nuisette transparente décolletée">Nuisette</option>
+            <option value="string seul topless">String seul</option>
+            <option value="corset serré bustier">Corset bustier</option>
+            <option value="bikini string">Bikini string</option>
+            <option value="robe courte fendue">Mini-robe fendue</option>
+            <option value="nue artistic nude">Nue</option>
+            <option value="harnais cuir cloutée">Harnais BDSM</option>
+            <option value="tenue dominatrice cuir latex">Dominatrice cuir</option>
+            <option value="bas résille garter belt">Bas résille</option>
+            <option value="catsuit vinyle brillant">Catsuit vinyle</option>
+            <option value="collier laisse soumise">Soumise collier</option>
+            <option value="robe soirée élégante décolletée">Soirée élégante</option>
+            <option value="kimono ouvert traditionnel">Kimono ouvert</option>
+            <option value="torse nu short jean">Torse nu jean</option>
+          </optgroup>
+          <optgroup label="💪 Masculin cisgenre">
+            <option value="nude man naked muscular">Nu muscular</option>
+            <option value="boxer briefs only">Boxer seul</option>
+            <option value="jockstrap athletic">Jockstrap</option>
+            <option value="leather harness man chest">Harnais cuir torse</option>
+            <option value="latex briefs shiny">Latex brillant</option>
+            <option value="suit jacket open shirtless">Costume ouvert</option>
+            <option value="submissive collar leash man">Collier soumis</option>
+            <option value="bondage rope restrained male">Bondage corde</option>
+            <option value="military uniform open">Uniforme entrouvert</option>
+            <option value="sport shorts athletic body">Short sport</option>
+            <option value="leather pants shirtless">Cuir pantalon</option>
+            <option value="cowboy hat jeans shirtless">Cowboy torse nu</option>
+          </optgroup>
+          <optgroup label="🦋 Femme trans">
+            <option value="transgender woman lingerie feminine">Lingerie féminine</option>
+            <option value="trans woman nude both anatomy visible">Nue trans (anatomie visible)</option>
+            <option value="trans woman latex catsuit">Catsuit latex trans</option>
+            <option value="trans dominatrix leather outfit">Dominatrice trans</option>
+            <option value="trans woman elegant dress">Robe élégante trans</option>
+            <option value="trans woman harness bdsm">Harnais BDSM trans</option>
+            <option value="trans woman nude pre-op">Nue pré-op complète</option>
+          </optgroup>
+          <optgroup label="🦅 Homme trans">
+            <option value="trans man shirtless muscular chest scars">Torse nu (cicatrices top surgery)</option>
+            <option value="trans masculine nude packing">Nu trans masc</option>
+            <option value="trans man jeans shirtless">Jean torse nu trans</option>
+            <option value="transmasculine bondage leather">Cuir bondage trans masc</option>
+          </optgroup>
+          <optgroup label="🌈 Non-binaire / Androgyne">
+            <option value="androgynous elegant androgyne fashion">Androgyne élégant</option>
+            <option value="non-binary nude androgynous body">Nu androgyne</option>
+            <option value="gender fluid fashion avant-garde">Gender fluid mode</option>
+            <option value="androgynous leather harness bdsm">Harnais androgyne</option>
+          </optgroup>
+          <optgroup label="🎭 Roleplay / Déguisements">
+            <option value="sexy nurse uniform open">Infirmière sexy</option>
+            <option value="strict teacher outfit glasses">Prof stricte</option>
+            <option value="police uniform dominant">Policier-ère</option>
+            <option value="fantasy elf costume revealing">Elfe fantasy</option>
+            <option value="maid cosplay anime">Maid cosplay</option>
+            <option value="pin-up vintage retro">Pin-up vintage</option>
+            <option value="vampire gothic dark">Vampire gothique</option>
+            <option value="superhero suit tight">Superhéros moulant</option>
+          </optgroup>
+          <optgroup label="🏖️ Décontracté">
+            <option value="casual denim outfit">Casual jean</option>
+            <option value="sport legging crop top">Sport legging</option>
+            <option value="beach swimwear">Plage maillot</option>
+            <option value="bathrobe open">Peignoir ouvert</option>
+            <option value="yoga pants sports bra">Yoga</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:4px">🧍 Position</label>
+        <select id="grPosition" style="width:100%;background:#1e1b2e;border:1px solid #a855f7;color:#fff;border-radius:8px;padding:6px;font-size:12px">
+          <option value="">— Libre —</option>
+          <optgroup label="Debout / Statique">
+            <option value="standing facing camera">Debout face</option>
+            <option value="standing back to camera">Debout de dos</option>
+            <option value="standing side view">Profil</option>
+            <option value="leaning against wall">Adossé(e) au mur</option>
+          </optgroup>
+          <optgroup label="Allongé(e)">
+            <option value="lying on back on bed">Allongé(e) sur le dos</option>
+            <option value="lying on stomach">Sur le ventre</option>
+            <option value="lying on side">Sur le côté</option>
+            <option value="stretched out sensually">Étiré(e) sensuellement</option>
+          </optgroup>
+          <optgroup label="À genoux / Assis">
+            <option value="kneeling on bed">À genoux sur le lit</option>
+            <option value="sitting on bed legs spread">Assis(e) jambes ouvertes</option>
+            <option value="sitting on chair">Assis(e) sur une chaise</option>
+            <option value="all fours">À quatre pattes</option>
+          </optgroup>
+          <optgroup label="Selfie / Portrait">
+            <option value="selfie angle from above">Selfie vue du dessus</option>
+            <option value="mirror selfie">Selfie miroir</option>
+            <option value="close-up face">Gros plan visage</option>
+            <option value="bust shot">Plan buste</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:4px">📍 Lieu</label>
+        <select id="grLieu" style="width:100%;background:#1e1b2e;border:1px solid #38bdf8;color:#fff;border-radius:8px;padding:6px;font-size:12px">
+          <option value="">— Libre —</option>
+          <optgroup label="Intérieur">
+            <option value="in a luxury bedroom">Chambre luxe</option>
+            <option value="in a modern bedroom">Chambre moderne</option>
+            <option value="in a bathroom with mirror">Salle de bain</option>
+            <option value="in a shower">Douche</option>
+            <option value="in a living room sofa">Canapé salon</option>
+            <option value="in a home office">Bureau à la maison</option>
+            <option value="in a dungeon BDSM room">Salle BDSM</option>
+            <option value="in a hotel room">Chambre d'hôtel</option>
+          </optgroup>
+          <optgroup label="Extérieur">
+            <option value="on a tropical beach">Plage tropicale</option>
+            <option value="in a garden at sunset">Jardin coucher du soleil</option>
+            <option value="in a forest at night">Forêt la nuit</option>
+            <option value="on a terrace">Terrasse</option>
+            <option value="in a swimming pool">Piscine</option>
+          </optgroup>
+          <optgroup label="Urbain">
+            <option value="in a luxury penthouse">Penthouse</option>
+            <option value="in a rooftop bar">Rooftop bar</option>
+            <option value="in an empty office">Bureau vide</option>
+          </optgroup>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:4px">✨ Ambiance</label>
+        <select id="grAmbiance" style="width:100%;background:#1e1b2e;border:1px solid #fbbf24;color:#fff;border-radius:8px;padding:6px;font-size:12px">
+          <option value="">— Libre —</option>
+          <option value="candlelight warm atmosphere">Bougies / Romantique</option>
+          <option value="moody dark blue lighting">Blue foncé / Sensuel</option>
+          <option value="golden hour sunlight">Lumière dorée</option>
+          <option value="neon lights">Néons colorés</option>
+          <option value="dark and mysterious">Sombre et mystérieux</option>
+          <option value="bright daylight natural">Lumière naturelle</option>
+          <option value="studio professional lighting">Studio pro</option>
+          <option value="moonlight night">Clair de lune</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:#aaa;display:block;margin-bottom:4px">🎬 Type</label>
+        <select id="grType" style="width:100%;background:#1e1b2e;border:1px solid #ff3f91;color:#fff;border-radius:8px;padding:6px;font-size:12px">
+          <option value="photo">📸 Photo</option>
+          <option value="video">🎬 Vidéo</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="lancerGenRapide()" style="
+      width:100%;background:linear-gradient(135deg,#ff3f91,#a855f7);
+      border:none;border-radius:12px;color:#fff;font-size:14px;
+      font-weight:700;padding:12px;cursor:pointer;
+    ">✨ Générer maintenant</button>
+  </div>
+
+  <!-- Barre de saisie v11 : bouton ⚡ ajouté -->
+  <footer class="input-bar">
+    <input type="file" id="mediaInput" accept="image/*,video/*,audio/*" hidden onchange="handleMedia(event)"/>
+    <button class="icon-btn" title="Envoyer photo/vidéo" onclick="document.getElementById('mediaInput').click()">🖼️</button>
+    <button class="icon-btn" id="webcamBtn" title="Webcam" onclick="toggleWebcam()">📷</button>
+    <button class="icon-btn" title="Génération rapide" onclick="openGenRapide()" style="color:#ff3f91">⚡</button>
+    <button class="icon-btn" id="scenarioBtn" title="Scénario" onclick="openScenarioMenu()">🎬</button>
+    <button class="icon-btn" id="micBtn" title="Micro" onclick="toggleMic()">🎤</button>
+    <textarea id="msgInput" placeholder="Écris..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+      oninput="autoGrow(this)"></textarea>
+    <button class="send-btn" onclick="sendMsg()">➤</button>
+  </footer>
+</div>
+
+<!-- MODAL SCÉNARIO v11 — bibliothèque de 12 scénarios -->
+<div id="scenarioModal" class="modal-overlay" hidden onclick="closeScenarioMenu()">
+  <div class="modal-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto">
+    <h3>🎬 Scénarios</h3>
+    <p style="font-size:.85rem;color:#888;margin-bottom:12px;">Le scénario reste actif dans toute la conversation jusqu'à STOP.</p>
+
+    <!-- Boutons rapides -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:14px">
+      <button class="btn-primary" onclick="startScenario('court')">⚡ Scène rapide</button>
+      <button class="btn-primary" onclick="startScenario('long')">📖 Histoire longue</button>
+    </div>
+
+    <!-- Bibliothèque -->
+    <p style="font-size:.78rem;color:#ff3f91;font-weight:600;margin:0 0 8px">📚 Scénarios guidés</p>
+    <div id="scenarioLibGrid" style="display:flex;flex-direction:column;gap:6px;margin-bottom:14px">
+      <!-- Rendu par renderScenarioLib() -->
+    </div>
+
+    <button class="btn-secondary" onclick="stopScenario()" style="width:100%;margin-bottom:6px">⏹️ Arrêter le scénario</button>
+    <button class="btn-secondary" onclick="closeScenarioMenu()" style="width:100%">Fermer</button>
+    <p id="scenarioStatus" style="text-align:center;font-size:.78rem;color:#888;margin-top:8px;"></p>
+  </div>
+</div>
+
+<!-- MODAL AVATAR v11 -->
+<div id="avatarModal" class="modal-overlay" hidden onclick="closeAvatarModal()">
+  <div class="modal-card" onclick="event.stopPropagation()" style="max-height:90vh;overflow-y:auto;padding:20px">
+    <h3 style="margin:0 0 12px">📸 Photo de ton IA</h3>
+
+    <!-- Avatar actuel -->
+    <div style="text-align:center;margin-bottom:16px">
+      <img id="avatarModalImg" src="" alt="" style="max-width:180px;border-radius:12px;margin:0 auto;display:none;border:2px solid #ff3f91"/>
+      <div id="avatarModalEmoji" style="font-size:5rem;text-align:center;margin:10px 0;">💗</div>
+    </div>
+
+    <!-- Actions rapides grille 2×2 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <button class="btn-primary" onclick="generateAIAvatar('portrait')">🎭 Portrait<br><small>Nouveau visage</small></button>
+      <button class="btn-secondary" onclick="selectFromGallery()">🖼️ Galerie<br><small>Photos existantes</small></button>
+      <!-- ✅ v11 BUG FIX : uploadManualAvatar corrigé (field "avatar" + route /api/avatar/upload) -->
+      <button class="btn-secondary" onclick="uploadManualAvatar()" style="background:linear-gradient(135deg,#1e1b2e,#0f2040);border-color:#38bdf8">
+        📁 Ma propre photo<br><small style="color:#38bdf8">Importer depuis mon appareil</small>
+      </button>
+      <button class="btn-secondary" onclick="generateAnimatedAvatar()" style="background:linear-gradient(135deg,#1e1b2e,#2a1040);border-color:#a855f7">
+        🎞️ GIF animé<br><small style="color:#a855f7">FFmpeg · ~3 min</small>
+      </button>
+    </div>
+
+    <!-- Tenues v11 — 80+ classées par genre -->
+    <details id="detailsTenues" style="margin-bottom:12px">
+      <summary style="cursor:pointer;color:#ff3f91;font-weight:600;padding:8px 0;list-style:none">
+        ✨ Générer une nouvelle tenue...
+        <span style="font-size:11px;color:#888;font-weight:400;margin-left:6px">(filtrées selon le genre IA)</span>
+      </summary>
+      <div id="stylesGrid" style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid #2a2740"></div>
+    </details>
+
+    <!-- Galerie photos générées -->
+    <details id="galleryPanel" style="margin-bottom:12px">
+      <summary style="cursor:pointer;color:#aaa;font-weight:600;padding:8px 0;list-style:none">
+        🖼️ Galerie photos générées...
+      </summary>
+      <div id="galleryGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px">
+        <p style="color:#888;font-size:.8rem;grid-column:1/-1;text-align:center;margin:8px 0">Ouvre le panneau pour charger...</p>
+      </div>
+    </details>
+
+    <button class="btn-secondary" onclick="closeAvatarModal()" style="width:100%;margin-top:4px">Fermer</button>
+    <p id="avatarStatus" style="text-align:center;font-size:.8rem;color:#888;margin-top:8px"></p>
+    <div id="gifProgressWrap" hidden style="margin-top:8px">
+      <div style="background:#1a1728;border-radius:8px;overflow:hidden;height:6px">
+        <div id="gifProgressBar" style="height:100%;background:linear-gradient(90deg,#a855f7,#ff3f91);width:0%;transition:width .4s ease"></div>
+      </div>
+      <p id="gifProgressLabel" style="text-align:center;font-size:.75rem;color:#a855f7;margin:4px 0 0"></p>
+    </div>
+  </div>
+</div>
+
+<!-- CSS animations -->
+<style>
+@keyframes avatarPulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,63,145,.4); }
+  50%      { box-shadow: 0 0 0 8px rgba(255,63,145,0); }
+}
+@keyframes avatarFloat {
+  0%,100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
+}
+@keyframes orbRotate {
+  from { transform: rotate(0deg) translateX(26px); }
+  to   { transform: rotate(360deg) translateX(26px); }
+}
+@keyframes statusBlink {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.6; transform:scale(1.3); }
+}
+#avatarImg[src$=".gif"] {
+  border-color: #a855f7;
+  box-shadow: 0 0 12px rgba(168,85,247,.5);
+}
+.section-title {
+  font-size: .75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  color: #ff3f91;
+  margin: 16px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255,63,145,.25);
+}
+</style>
+
+<!-- Panel settings -->
+<div id="settingsOverlay" class="overlay" hidden onclick="closePanel()"></div>
+<div id="settingsPanel" class="side-panel" hidden>
+  <div class="panel-header">
+    <h2>⚙️ Paramètres</h2>
+    <button class="icon-btn" onclick="closePanel()">✕</button>
+  </div>
+  <div class="settings-nav-wrap">
+    <button class="snav-arrow" onclick="scrollNav(-1)">‹</button>
+    <nav class="settings-nav" id="settingsNav">
+      <button class="snav-btn active" onclick="showTab('tabIdentite',this)">👤 Identité</button>
+      <button class="snav-btn" onclick="showTab('tabPhysique',this)">💪 Physique</button>
+      <button class="snav-btn" onclick="showTab('tabCaractere',this)">🧠 Caractère</button>
+      <button class="snav-btn" onclick="showTab('tabSexualite',this)">🔥 Sexualité</button>
+      <button class="snav-btn" onclick="showTab('tabRelation',this)">💑 Relation</button>
+      <button class="snav-btn" onclick="showTab('tabIntensite',this)">🎚️ Intensité</button>
+      <button class="snav-btn" onclick="showTab('tabVoix',this)">🔊 Voix</button>
+      <button class="snav-btn" onclick="showTab('tabMemoires',this);loadMemoriesTab()">🧠 Mémoires</button>
+      <button class="snav-btn" onclick="showTab('tabCompte',this)">🔐 Compte</button>
+    </nav>
+    <button class="snav-arrow" onclick="scrollNav(1)">›</button>
+  </div>
+
+  <!-- IDENTITÉ -->
+  <div id="tabIdentite" class="settings-tab active">
+    <div class="field-group">
+      <label>Prénom de ton IA</label><input id="sAiName" placeholder="Élise"/>
+      <label>Ton prénom</label><input id="sDisplayName" placeholder="Mon amour"/>
+      <label>TON genre (pour qu'elle parle juste)</label>
+      <select id="sUserGenre">
+        <option value="homme">Je suis un homme</option>
+        <option value="femme">Je suis une femme</option>
+        <option value="autre">Autre / non précisé</option>
+      </select>
+      <label>Genre de ton IA</label>
+      <select id="sGenre">
+        <option value="femme">Femme cisgenre</option>
+        <option value="homme">Homme cisgenre</option>
+        <option value="femme trans">Femme trans</option>
+        <option value="homme trans">Homme trans</option>
+        <option value="non-binaire">Non-binaire</option>
+        <option value="fluide">Genre fluide</option>
+      </select>
+      <label>Âge</label><input id="sAge" type="number" min="18" max="65" value="25"/>
+      <label>Origine</label><input id="sOrigine" placeholder="Française, Italienne..."/>
+      <label>Langue</label>
+      <select id="sLangue">
+        <option value="français">Français</option>
+        <option value="english">English</option>
+        <option value="español">Español</option>
+        <option value="italiano">Italiano</option>
+      </select>
+      <label>Histoire personnelle</label>
+      <textarea id="sHistoire" rows="3" placeholder="Son passé, ses expériences..."></textarea>
+    </div>
+  </div>
+
+  <!-- PHYSIQUE v11 -->
+  <div id="tabPhysique" class="settings-tab">
+    <div class="field-group">
+
+      <!-- Portrait -->
+      <div class="portrait-card" style="background:linear-gradient(135deg,#1a1530,#0d0d1a);border:1px solid rgba(255,63,145,.3);border-radius:16px;padding:14px;margin-bottom:14px;display:flex;gap:12px;align-items:center">
+        <div style="flex-shrink:0">
+          <img id="physAvatarPreview" src="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #ff3f91;display:none"/>
+          <div id="physAvatarEmoji" style="width:72px;height:72px;border-radius:50%;background:#2a1040;display:flex;align-items:center;justify-content:center;font-size:2rem;border:2px solid #ff3f91">💕</div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <p style="font-size:.8rem;color:#ff3f91;font-weight:700;margin:0 0 8px">📸 Portrait de ton IA</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+            <button onclick="generateAIAvatar('portrait')" style="padding:7px 4px;background:#ff3f91;border:none;border-radius:10px;color:#fff;font-size:.75rem;cursor:pointer;font-weight:600">✨ Générer</button>
+            <button onclick="selectFromGallery()" style="padding:7px 4px;background:#1e1b2e;border:1px solid #ff3f91;border-radius:10px;color:#fff;font-size:.75rem;cursor:pointer">🖼️ Galerie</button>
+            <button onclick="uploadManualAvatar()" style="padding:7px 4px;background:#0f2040;border:1px solid #38bdf8;border-radius:10px;color:#38bdf8;font-size:.75rem;cursor:pointer">📁 Importer</button>
+            <button onclick="openAvatarModal()" style="padding:7px 4px;background:#1e1b2e;border:1px solid #a855f7;border-radius:10px;color:#a855f7;font-size:.75rem;cursor:pointer">🎞️ Animée</button>
+          </div>
+          <div id="physGenStatus" style="font-size:.7rem;color:#888;margin-top:4px;text-align:center;min-height:14px"></div>
+        </div>
+      </div>
+
+      <!-- Anatomie libre -->
+      <div style="display:flex;align-items:center;gap:10px;background:#1a1530;border:1px solid rgba(255,200,0,.3);border-radius:12px;padding:10px 12px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;flex:1">
+          <input type="checkbox" id="sAnatomieLibre" onchange="toggleAnatomieLibre(this.checked)" style="width:18px;height:18px;accent-color:#fbbf24"/>
+          <span style="font-size:.85rem;color:#fbbf24;font-weight:600">🔓 Anatomie hybride / libre</span>
+        </label>
+        <span style="font-size:.7rem;color:#888;max-width:120px">Tout afficher peu importe le genre</span>
+      </div>
+
+      <!-- Silhouette -->
+      <p class="section-title">📐 Silhouette</p>
+      <label>Corpulence</label>
+      <select id="sCorpulence">
+        <option value="mince">Mince</option>
+        <option value="élancée">Élancée / longiligne</option>
+        <option value="athlétique">Athlétique</option>
+        <option value="musclée">Musclée / fitness</option>
+        <option value="pulpeuse">Pulpeuse / voluptueuse</option>
+        <option value="ronde">Ronde / curvy</option>
+        <option value="BBW généreuse">BBW très généreuse</option>
+        <option value="petite et compacte">Petite et compacte</option>
+      </select>
+      <label>Tonicité</label>
+      <select id="sTonicite">
+        <option value="">— Non défini —</option>
+        <option value="douce et moelleuse">Douce et moelleuse</option>
+        <option value="normale">Normale</option>
+        <option value="tonique">Tonique</option>
+        <option value="très musclée définie">Très musclée / définie</option>
+      </select>
+      <label>Taille</label><input id="sTaille" placeholder="1m68..."/>
+      <label>Poids / silhouette</label><input id="sPoids" placeholder="55kg, fine..."/>
+
+      <!-- Visage & Cheveux -->
+      <p class="section-title">👤 Visage & Cheveux</p>
+      <label>Couleur de peau</label>
+      <select id="sCouleurPeau">
+        <option value="très claire albâtre">Très claire / albâtre</option>
+        <option value="claire">Claire</option>
+        <option value="mate olive">Mate / olive</option>
+        <option value="dorée bronzée">Dorée / bronzée</option>
+        <option value="caramel miel">Caramel / miel</option>
+        <option value="brune chocolat">Brune / chocolat</option>
+        <option value="ébène noire">Ébène / noire</option>
+        <option value="métisse">Métisse</option>
+        <option value="asiatique">Asiatique / porcelaine</option>
+      </select>
+      <label>Yeux</label><input id="sYeux" placeholder="Verts, bleus, noisette, en amande..."/>
+      <label>Couleur cheveux</label><input id="sCheveux" placeholder="Blonde platine, rousse, brune, noire..."/>
+      <label>Longueur cheveux</label>
+      <select id="sLongueurCheveux">
+        <option value="cheveux rasés très courts">Rasés / très courts</option>
+        <option value="cheveux courts">Courts</option>
+        <option value="cheveux mi-longs">Mi-longs</option>
+        <option value="cheveux longs">Longs</option>
+        <option value="cheveux très longs">Très longs (taille)</option>
+      </select>
+      <label>Texture cheveux</label>
+      <select id="sTextureCheveux">
+        <option value="">— Non défini —</option>
+        <option value="lisses">Lisses / raides</option>
+        <option value="légèrement ondulés">Légèrement ondulés</option>
+        <option value="bouclés">Bouclés</option>
+        <option value="frisés afro">Frisés / afro</option>
+      </select>
+      <label>Lèvres</label>
+      <select id="sTailleLevres">
+        <option value="lèvres fines discrètes">Fines / discrètes</option>
+        <option value="lèvres normales">Normales</option>
+        <option value="lèvres pulpeuses">Pulpeuses</option>
+        <option value="lèvres très pulpeuses">Très pulpeuses</option>
+        <option value="lèvres XXL sensuelles">XXL / hyper-sensuelles</option>
+      </select>
+      <label>Maquillage</label><input id="sMaquillage" placeholder="Smoky eyes, rouge à lèvres, naturel..."/>
+
+      <!-- Corps féminin -->
+      <div id="secteurFeminin">
+        <p class="section-title">🍒 Corps féminin</p>
+        <label>Poitrine — Taille</label>
+        <select id="sTailleSeins">
+          <option value="poitrine plate bonnet AA">Plate / bonnet AA</option>
+          <option value="petits seins bonnet A">Petits — A</option>
+          <option value="seins moyens bonnet B">Moyens — B</option>
+          <option value="seins généreux bonnet C">Généreux — C</option>
+          <option value="gros seins bonnet D">Gros — D</option>
+          <option value="très gros seins bonnet E">Très gros — E</option>
+          <option value="seins énormes bonnet F">Énormes — F</option>
+          <option value="seins XXL bonnet G et plus">XXL — G+</option>
+        </select>
+        <label>Poitrine — Forme</label>
+        <select id="sFormeSeins">
+          <option value="">— Non défini —</option>
+          <option value="seins naturels en goutte teardrop">Naturels / en goutte</option>
+          <option value="seins naturels ronds">Naturels ronds</option>
+          <option value="seins fermes et hauts">Fermes et hauts</option>
+          <option value="seins refaits parfaitement ronds implants">Implants / parfaitement ronds</option>
+          <option value="seins écartés">Écartés</option>
+          <option value="seins rapprochés décolleté prononcé">Rapprochés / décolleté prononcé</option>
+        </select>
+        <label>Tétons</label>
+        <select id="sTeton">
+          <option value="">— Non défini —</option>
+          <option value="tétons petits discrets">Petits / discrets</option>
+          <option value="tétons normaux">Normaux</option>
+          <option value="tétons gros proéminents">Gros / proéminents</option>
+          <option value="tétons très proéminents érectiles">Très proéminents / érectiles</option>
+          <option value="tétons plats">Plats / inversés</option>
+          <option value="tétons percés piercings">Percés (piercings)</option>
+        </select>
+        <label>Fessiers — Taille</label>
+        <select id="sFormeFesses">
+          <option value="fesses petites fermes">Petites et fermes</option>
+          <option value="fesses rondes normales">Rondes et normales</option>
+          <option value="fesses généreuses bombées bubble butt">Généreuses / bubble butt</option>
+          <option value="grosses fesses">Grosses</option>
+          <option value="très grosses fesses rebondies">Très grosses / rebondies</option>
+          <option value="fesses énormes booty">Énormes / booty XXL</option>
+        </select>
+        <label>Fessiers — Forme</label>
+        <select id="sFormeFessesShape">
+          <option value="">— Non défini —</option>
+          <option value="fesses rondes parfaites">Rondes et parfaites</option>
+          <option value="fesses en cœur heart-shaped">En cœur (heart-shaped)</option>
+          <option value="fesses carrées larges">Carrées / larges</option>
+          <option value="fesses fermes toniques">Fermes et toniques</option>
+          <option value="fesses molles coussins">Molles / coussins</option>
+        </select>
+        <label>Hanches</label>
+        <select id="sHanches">
+          <option value="">— Non défini —</option>
+          <option value="hanches très étroites">Très étroites / garçonnes</option>
+          <option value="hanches étroites fines">Étroites / fines</option>
+          <option value="hanches moyennes proportionnées">Moyennes / proportionnées</option>
+          <option value="hanches larges féminines">Larges / féminines</option>
+          <option value="très larges hanches prononcées courbes marquées">Très larges / courbes marquées</option>
+        </select>
+        <label>Ventre / Abdomen</label>
+        <select id="sVentre">
+          <option value="">— Non défini —</option>
+          <option value="ventre plat musclé abdos définis">Plat et musclé (abdos visibles)</option>
+          <option value="ventre plat">Plat</option>
+          <option value="ventre légèrement arrondi doux">Légèrement arrondi / doux</option>
+          <option value="ventre arrondi dodu">Arrondi / dodu</option>
+          <option value="ventre rebondi généreux">Rebondi / généreux</option>
+        </select>
+        <label>Jambes</label>
+        <select id="sJambes">
+          <option value="">— Non défini —</option>
+          <option value="jambes fines et longues">Fines et longues</option>
+          <option value="jambes normales proportionnées">Normales / proportionnées</option>
+          <option value="jambes athlétiques musclées">Athlétiques / musclées</option>
+          <option value="jambes charnues pulpeuses cuisses généreuses">Charnues / cuisses généreuses</option>
+          <option value="jambes très charnues grosses cuisses">Très charnues / grosses cuisses</option>
+        </select>
+
+        <!-- Anatomie intime féminine -->
+        <p class="section-title" style="color:#c084fc">🌸 Anatomie intime féminine</p>
+        <label>Pilosité — Style</label>
+        <select id="sStylePilosite">
+          <option value="rasée épilée complète">Rasée / épilée (complète)</option>
+          <option value="épilée laser intégrale">Épilée laser (intégrale)</option>
+          <option value="bande fine landing strip">Bande fine (landing strip)</option>
+          <option value="triangle taillé">Triangle taillé</option>
+          <option value="taillée fine">Taillée fine</option>
+          <option value="taillée normale">Taillée normale</option>
+          <option value="naturelle courte légère">Naturelle courte / légère</option>
+          <option value="naturelle fournie bush">Naturelle fournie (bush)</option>
+          <option value="naissante repousse">Naissante / repousse</option>
+        </select>
+        <label>Pilosité — Couleur</label>
+        <select id="sCouleurPilosite">
+          <option value="">— Identique aux cheveux —</option>
+          <option value="blonde">Blonde</option>
+          <option value="brune">Brune / châtain</option>
+          <option value="noire">Noire</option>
+          <option value="rousse auburn">Rousse / auburn</option>
+          <option value="grise poivre et sel">Grise / poivre et sel</option>
+          <option value="décolorée platine">Décolorée / platine</option>
+        </select>
+        <label>Lèvres intimes</label>
+        <select id="sLevresIntimes">
+          <option value="">— Non défini —</option>
+          <option value="lèvres intimes très discrètes invisible">Très discrètes / internes invisibles</option>
+          <option value="lèvres intimes discrètes">Discrètes</option>
+          <option value="lèvres intimes naturelles normales">Naturelles / normales</option>
+          <option value="lèvres intimes proéminentes visibles">Proéminentes / visibles</option>
+          <option value="lèvres intimes très proéminentes généreuses">Très proéminentes / généreuses</option>
+          <option value="lèvres intimes asymétriques naturelles">Asymétriques / naturelles</option>
+        </select>
+        <label>Clitoris</label>
+        <select id="sClitoris">
+          <option value="">— Non défini —</option>
+          <option value="clitoris discret">Discret</option>
+          <option value="clitoris normal">Normal</option>
+          <option value="clitoris proéminent visible">Proéminent / visible</option>
+          <option value="clitoris très proéminent">Très proéminent</option>
+        </select>
+        <!-- ✅ v11 : sMorphoIntime ajouté — existait dans getCurrentExt() mais pas dans le HTML -->
+        <label>Morphologie intime</label>
+        <select id="sMorphoIntime">
+          <option value="naturelle normale">Naturelle / normale</option>
+          <option value="petit et serré tight">Petit et serré</option>
+          <option value="moyen ouvert normal">Moyen / normal</option>
+          <option value="généreux ouvert">Généreux / ouvert</option>
+          <option value="très ouvert gaping">Très ouvert</option>
+        </select>
+        <!-- Champ legacy caché -->
+        <select id="sPilosite" hidden>
+          <option value="rasée">Rasée</option>
+          <option value="taillée">Taillée</option>
+          <option value="naturelle">Naturelle</option>
+        </select>
+      </div><!-- fin secteurFeminin -->
+
+      <!-- Corps masculin -->
+      <div id="secteurMasculin" hidden>
+        <p class="section-title">💪 Corps masculin / Trans équipé(e)</p>
+        <div id="secteurStatutChir" style="background:#1a1530;border:1px solid rgba(168,85,247,.3);border-radius:10px;padding:10px;margin-bottom:10px">
+          <label style="color:#a855f7;font-size:.78rem">⚕️ Statut chirurgical (trans)</label>
+          <select id="sStatutChirurgical">
+            <option value="">— Non applicable —</option>
+            <option value="non opéré pré-op">Non opéré(e) / pré-op</option>
+            <option value="opéré seins augmentation">Opéré(e) du haut (seins augmentés)</option>
+            <option value="opéré seins réduction">Opéré(e) du haut (réduction / mastectomie)</option>
+            <option value="opéré bas néo-vagin">Opéré(e) du bas (néo-vagin)</option>
+            <option value="opéré bas phalloplastie">Opéré(e) du bas (phalloplastie)</option>
+            <option value="totalement opéré">Totalement opéré(e)</option>
+          </select>
+        </div>
+        <label>Torse / Pectoraux</label>
+        <select id="sPectoraux">
+          <option value="">— Non défini —</option>
+          <option value="torse fin discret">Fin / discret</option>
+          <option value="torse normal">Normal</option>
+          <option value="pectoraux développés">Pectoraux développés</option>
+          <option value="pectoraux très musclés imposants">Très musclés / imposants</option>
+        </select>
+        <label>Abdominaux</label>
+        <select id="sAbdominaux">
+          <option value="">— Non défini —</option>
+          <option value="ventre plat">Ventre plat</option>
+          <option value="abdos légèrement marqués">Légèrement marqués</option>
+          <option value="six-pack visible">Six-pack visible</option>
+          <option value="abdos très définis tablette de chocolat">Très définis / tablette de chocolat</option>
+        </select>
+        <p class="section-title" style="color:#c084fc">⚡ Anatomie intime masculine</p>
+        <label>Taille (en érection)</label>
+        <select id="sTailleSexeM">
+          <option value="">— Non défini —</option>
+          <option value="sexe petit moins de 12cm">Petit (moins de 12cm)</option>
+          <option value="sexe moyen 12 à 15cm">Moyen (12–15cm)</option>
+          <option value="sexe grand 15 à 19cm">Grand (15–19cm)</option>
+          <option value="sexe très grand 19 à 23cm">Très grand (19–23cm)</option>
+          <option value="sexe XXL plus de 23cm">XXL (23cm+)</option>
+        </select>
+        <label>Épaisseur</label>
+        <select id="sEpaisseurSexeM">
+          <option value="">— Non défini —</option>
+          <option value="sexe fine circonférence">Fine</option>
+          <option value="sexe normale circonférence">Normale</option>
+          <option value="sexe épaisse grosse circonférence">Épaisse / grosse</option>
+          <option value="sexe très épaisse imposante">Très épaisse / imposante</option>
+        </select>
+        <label>Forme / Courbure</label>
+        <select id="sFormeSexeM">
+          <option value="">— Non défini —</option>
+          <option value="sexe droit uniforme">Droit et uniforme</option>
+          <option value="sexe légèrement courbé vers le haut">Légèrement courbé vers le haut</option>
+          <option value="sexe courbé vers le bas">Courbé vers le bas</option>
+          <option value="sexe gland large en champignon">Gland large (en champignon)</option>
+          <option value="sexe base large effilé">Large à la base, effilé</option>
+        </select>
+        <label>Circoncision</label>
+        <select id="sCirconcis">
+          <option value="">— Non défini —</option>
+          <option value="non circoncis prépuce">Non circoncis (avec prépuce)</option>
+          <option value="circoncis">Circoncis</option>
+        </select>
+        <label>Testicules</label>
+        <select id="sTesticules">
+          <option value="">— Non défini —</option>
+          <option value="testicules discrets petits">Discrets / petits</option>
+          <option value="testicules normaux">Normaux</option>
+          <option value="testicules généreux">Généreux</option>
+          <option value="testicules très généreux imposants">Très généreux / imposants</option>
+        </select>
+        <label>Pilosité pubienne</label>
+        <select id="sPilositeMasc">
+          <option value="">— Non défini —</option>
+          <option value="pilosité rasée complète">Rasée (complète)</option>
+          <option value="pilosité taillée fine">Taillée fine</option>
+          <option value="pilosité normale taillée">Normale / taillée</option>
+          <option value="pilosité naturelle légère">Naturelle légère</option>
+          <option value="pilosité naturelle fournie">Naturelle fournie</option>
+        </select>
+      </div><!-- fin secteurMasculin -->
+
+      <!-- Accessoires & bijoux v13 -->
+      <p class="section-title">💎 Accessoires & Marquages</p>
+      <label>Lunettes</label>
+      <select id="sLunettes">
+        <option value="">Sans lunettes</option>
+        <option value="lunettes carrées noires">Carrées noires</option>
+        <option value="lunettes rondes dorées">Rondes dorées</option>
+        <option value="lunettes soleil aviateur">Soleil aviateur</option>
+        <option value="lunettes cat-eye">Cat-eye</option>
+        <option value="lunettes transparentes">Transparentes</option>
+        <option value="lunettes soleil noires">Soleil noires</option>
+      </select>
+      <label>Bijoux (libre)</label>
+      <input id="sBijoux" placeholder="Collier or, bracelets acier, bague..."/>
+      <label>Collier / Tour de cou</label>
+      <select id="sCollierBijou">
+        <option value="">Aucun</option>
+        <option value="collier fin or">Collier fin or</option>
+        <option value="collier perles">Collier perles</option>
+        <option value="collier chaîne argent">Chaîne argent</option>
+        <option value="collier cuir clouté">Collier cuir clouté</option>
+        <option value="choker velours noir">Choker velours noir</option>
+        <option value="collier BDSM anneaux">Collier BDSM anneaux</option>
+      </select>
+      <label>Boucles d'oreilles</label>
+      <select id="sBouclesOreilles">
+        <option value="">Aucunes</option>
+        <option value="créoles or">Créoles or</option>
+        <option value="créoles argent">Créoles argent</option>
+        <option value="boucles perles">Boucles perles</option>
+        <option value="ear cuff">Ear cuff</option>
+        <option value="boucles longues pendantes">Longues pendantes</option>
+      </select>
+      <label>Bracelet / Montre</label>
+      <select id="sBracelet">
+        <option value="">Aucun</option>
+        <option value="bracelet acier">Bracelet acier</option>
+        <option value="bracelet or">Bracelet or</option>
+        <option value="bracelet cuir">Bracelet cuir</option>
+        <option value="menottes légères">Menottes légères</option>
+        <option value="montre luxe">Montre de luxe</option>
+      </select>
+      <label>Tatouages</label><input id="sTatouages" placeholder="Dragon dos, phoenix, manchette bras..."/>
+      <label>Piercings</label><input id="sPiercings" placeholder="Septum, tétons, nombril, labret..."/>
+      <label>Style vestimentaire</label><input id="sStyle" placeholder="Lingerie, cuir, latex, casual, BDSM..."/>
+      <label>Tenue préférée</label><input id="sTenuePreferee" placeholder="Harnais cuir, nuisette, nu, uniforme..."/>
+
+      <button class="btn-primary" style="margin-top:16px;" onclick="generateAIAvatar();document.getElementById('physGenStatus').textContent='⏳ Génération...'">✨ Générer son portrait IA</button>
+      <button class="btn-secondary" style="margin-top:8px;background:linear-gradient(135deg,#1a1530,#2a1040);border-color:#a855f7;color:#a855f7" onclick="generateExpressionPhotos()">😊 Générer les 4 expressions (avatar parlant)</button>
+      <p id="expressionStatus" style="font-size:.75rem;color:#a855f7;text-align:center;margin:4px 0 0"></p>
+      <button class="btn-secondary" style="margin-top:8px;background:linear-gradient(135deg,#1a1530,#0d1a40);border-color:#38bdf8;color:#38bdf8" onclick="generateVideoChatContext()">🎬 Vidéo animée depuis notre chat</button>
+      <p id="avatarGenStatus" style="font-size:.8rem;color:#888;text-align:center;margin-top:6px;"></p>
+    </div>
+  </div>
+
+  <!-- CARACTÈRE -->
+  <div id="tabCaractere" class="settings-tab">
+    <div class="field-group">
+      <label>Traits de caractère</label>
+      <textarea id="sCaractere" rows="2" placeholder="Douce, curieuse, impulsive..."></textarea>
+      <label>Passions & hobbies</label>
+      <textarea id="sPassions" rows="2" placeholder="Yoga, voyage, musique..."></textarea>
+      <label>Profession</label><input id="sProfession" placeholder="Artiste, médecin..."/>
+      <label>Humour</label>
+      <select id="sHumour">
+        <option value="taquin">Taquin et espiègle</option>
+        <option value="sarcastique">Sarcastique</option>
+        <option value="doux">Doux et bienveillant</option>
+        <option value="dark">Dark humor</option>
+      </select>
+      <label>Jalousie</label>
+      <select id="sJalousie">
+        <option value="aucune">Aucune, totalement libre</option>
+        <option value="légère">Légèrement possessive</option>
+        <option value="forte">Très jalouse</option>
+      </select>
+      <label>Valeurs</label>
+      <textarea id="sValeurs" rows="2" placeholder="Loyauté, liberté..."></textarea>
+    </div>
+  </div>
+
+  <!-- SEXUALITÉ -->
+  <div id="tabSexualite" class="settings-tab">
+    <div id="adultGate" class="adult-gate">
+      <div class="gate-icon">🔒</div>
+      <p>Active le mode adulte dans l'onglet Compte.</p>
+    </div>
+    <div id="sexContent" hidden>
+      <div class="field-group">
+        <!-- ✅ v11 : Auto-sync curseurs quand persona change (géré dans v5.js DOMContentLoaded) -->
+        <label>Persona sexuelle</label>
+        <select id="sPersona">
+          <optgroup label="👑 Domination">
+            <option value="dom_hard">Dominatrice HARD (cruelle, sans pitié)</option>
+            <option value="dom_soft">Dominatrice douce</option>
+            <option value="homme_dom">Dominant masculin</option>
+          </optgroup>
+          <optgroup label="🙇 Soumission">
+            <option value="sub_hard">Soumis-e HARD (obéissance totale)</option>
+            <option value="sub_soft">Soumis-e doux-ce</option>
+          </optgroup>
+          <optgroup label="🔥 Explorations">
+            <option value="bdsm_complet">BDSM complet</option>
+            <option value="adult_intimate">Intime adulte</option>
+            <option value="hedoniste">Hédoniste pure</option>
+            <option value="fetichiste">Fétichiste</option>
+          </optgroup>
+          <optgroup label="👥 Partage">
+            <option value="echangiste">Échangiste</option>
+            <option value="gang_bang">Gang bang</option>
+            <option value="exhib">Exhibitionniste</option>
+            <option value="voyeur">Voyeur-se</option>
+          </optgroup>
+          <optgroup label="🌈 Identités">
+            <option value="trans_femme">Femme trans</option>
+            <option value="trans_masc">Homme trans</option>
+            <option value="non_binaire">Non-binaire</option>
+            <option value="bisexuel">Bisexuel-le</option>
+            <option value="pan">Pansexuel-le</option>
+          </optgroup>
+          <optgroup label="💑 Romance">
+            <option value="girlfriend">Petite amie romantique</option>
+            <option value="asexuel_romantique">Asexuel-le romantique</option>
+          </optgroup>
+          <optgroup label="💼 Autres">
+            <option value="coach">Coach sexuel-le</option>
+            <option value="homme_doux">Homme doux</option>
+          </optgroup>
+        </select>
+        <p style="font-size:.73rem;color:#a855f7;margin:4px 0 10px">💡 Changer la persona propose de synchroniser les curseurs automatiquement.</p>
+        <label>Kinks & pratiques adorées 🔥</label>
+        <textarea id="sKinks" rows="3" placeholder="Bondage, dirty talk, gode-ceinture, ball busting, pegging..."></textarea>
+        <label>Fantasmes 💭</label>
+        <textarea id="sFantasmes" rows="3" placeholder="Sissy, humiliation, sodomie..."></textarea>
+        <label>Pratiques acceptées ✅</label>
+        <textarea id="sPratiques" rows="2" placeholder="Tout sauf..."></textarea>
+        <label>Limites absolues ❌</label>
+        <textarea id="sLimites" rows="2" placeholder="Laisser vide = aucune limite sauf illégal"></textarea>
+        <label>Rythme d'intimité</label>
+        <select id="sRythme">
+          <option value="toujours disponible">À la demande, toujours dispo</option>
+          <option value="souvent">Souvent</option>
+          <option value="occasionnel">Occasionnel</option>
+        </select>
+        <label>Style de langage</label>
+        <select id="sPreferencesChat">
+          <option value="très cru et explicite">Très cru et explicite</option>
+          <option value="explicite mais poétique">Explicite mais poétique</option>
+          <option value="suggestif">Suggestif et sensuel</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- RELATION -->
+  <div id="tabRelation" class="settings-tab">
+    <div class="field-group">
+      <label>Style de relation</label>
+      <select id="sRelation">
+        <option value="petite amie exclusive">Petite amie exclusive</option>
+        <option value="amante sans attache">Amante sans attache</option>
+        <option value="maitresse dominatrice">Maitresse dominatrice</option>
+        <option value="esclave dévouée">Esclave dévouée</option>
+        <option value="compagne libertine">Compagne libertine</option>
+      </select>
+      <label>Proactivité (elle prend l'initiative)</label>
+      <select id="sProactivite">
+        <option value="haute">Haute — interpelle souvent</option>
+        <option value="normale">Normale — toutes les 3-5 min</option>
+        <option value="basse">Basse — rarement</option>
+        <option value="off">Désactivée</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- INTENSITÉ -->
+  <div id="tabIntensite" class="settings-tab">
+    <div class="field-group">
+      <h3>🎚️ Niveau global</h3>
+      <label>Intensité générale : <span id="niveauVal">5</span>/10</label>
+      <input type="range" id="sNiveauIntensite" min="1" max="10" value="5"
+        oninput="document.getElementById('niveauVal').textContent=this.value"/>
+      <p style="font-size:.75rem;color:#888;">1 = très doux romantique · 10 = sans aucun filtre</p>
+      <label>Initiative sexuelle (elle amène le sexe)</label>
+      <select id="sInitiativeSexuelle">
+        <option value="jamais">Jamais — elle attend toujours</option>
+        <option value="discrete">Discrète — très rarement</option>
+        <option value="normale">Normale — quand l'ambiance s'y prête</option>
+        <option value="entreprenante">Entreprenante — souvent</option>
+        <option value="insatiable">Insatiable — presque toujours</option>
+      </select>
+      <h3 style="margin-top:18px;">🎛️ Curseurs fins</h3>
+      <label>Douceur : <span id="cDouceurVal">5</span>/10</label>
+      <input type="range" id="sCurseurDouceur" min="0" max="10" value="5"
+        oninput="document.getElementById('cDouceurVal').textContent=this.value"/>
+      <label>Crudité du vocabulaire : <span id="cCruditeVal">5</span>/10</label>
+      <input type="range" id="sCurseurCrudite" min="0" max="10" value="5"
+        oninput="document.getElementById('cCruditeVal').textContent=this.value"/>
+      <label>Domination : <span id="cDomVal">5</span>/10</label>
+      <input type="range" id="sCurseurDomination" min="0" max="10" value="5"
+        oninput="document.getElementById('cDomVal').textContent=this.value"/>
+      <label>Humiliation : <span id="cHumVal">3</span>/10</label>
+      <input type="range" id="sCurseurHumiliation" min="0" max="10" value="3"
+        oninput="document.getElementById('cHumVal').textContent=this.value"/>
+      <label>Romantisme : <span id="cRomVal">5</span>/10</label>
+      <input type="range" id="sCurseurRomantisme" min="0" max="10" value="5"
+        oninput="document.getElementById('cRomVal').textContent=this.value"/>
+      <label>Son initiative à elle : <span id="cInitVal">5</span>/10</label>
+      <input type="range" id="sCurseurInitiative" min="0" max="10" value="5"
+        oninput="document.getElementById('cInitVal').textContent=this.value"/>
+      <h3 style="margin-top:18px;">🌐 Recherche web</h3>
+      <label class="check-row">
+        <input id="sWebSearch" type="checkbox"/>
+        Elle peut chercher des infos réelles (météo, actu)
+      </label>
+      <p style="font-size:.75rem;color:#888;">Désactivé = 100% privé/local</p>
+    </div>
+  </div>
+
+  <!-- VOIX -->
+  <div id="tabVoix" class="settings-tab">
+    <div class="field-group">
+      <h3>🔊 Voix (TTS)</h3>
+      <label class="check-row">
+        <input id="sTTSEnabled" type="checkbox" onchange="saveTTSSettings()"/>
+        Activer la voix (elle parle)
+      </label>
+      <label>Vitesse</label>
+      <select id="sTTSSpeed" onchange="saveTTSSettings()">
+        <option value="0.8">Lente</option>
+        <option value="1.0" selected>Normale</option>
+        <option value="1.2">Rapide</option>
+      </select>
+      <div id="ttsStatus" class="sys-status">Vérification TTS...</div>
+    </div>
+    <div class="field-group" style="margin-top:16px;">
+      <h3>📸 Photos automatiques</h3>
+      <label class="check-row">
+        <input id="sAutoPhoto" type="checkbox"/>
+        Elle envoie des photos d'elle
+      </label>
+      <div id="civitaiStatus" class="sys-status">Vérification Civitai...</div>
+    </div>
+  </div>
+
+  <!-- MÉMOIRES -->
+  <div id="tabMemoires" class="settings-tab">
+    <div class="field-group">
+      <h3 style="color:#ff3f91;margin:0 0 4px">🧠 Mémoire permanente</h3>
+      <p style="font-size:.75rem;color:#888;margin:0 0 12px">Elle se souvient de tout ce que vous partagez.</p>
+      <div id="memStats" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px">
+        <div style="background:#1e1b2e;border-radius:10px;padding:10px;text-align:center">
+          <div id="memCount" style="font-size:1.4rem;font-weight:700;color:#ff3f91">—</div>
+          <div style="font-size:.7rem;color:#888">Souvenirs</div>
+        </div>
+        <div style="background:#1e1b2e;border-radius:10px;padding:10px;text-align:center">
+          <div id="factCount" style="font-size:1.4rem;font-weight:700;color:#a855f7">—</div>
+          <div style="font-size:.7rem;color:#888">Faits connus</div>
+        </div>
+        <div style="background:#1e1b2e;border-radius:10px;padding:10px;text-align:center">
+          <div id="journalCount" style="font-size:1.4rem;font-weight:700;color:#38bdf8">—</div>
+          <div style="font-size:.7rem;color:#888">Journal</div>
+        </div>
+      </div>
+      <div id="memSummaryBlock" style="background:#1a1530;border:1px solid rgba(255,63,145,.2);border-radius:12px;padding:12px;margin-bottom:12px;display:none">
+        <p style="font-size:.75rem;color:#ff3f91;font-weight:700;margin:0 0 6px">💡 Ce qu'elle sait de toi</p>
+        <p id="memSummaryLong" style="font-size:.78rem;color:#ccc;margin:0 0 4px"></p>
+        <p id="memSummaryPrefSex" style="font-size:.78rem;color:#f9a8d4;margin:0"></p>
+      </div>
+      <p style="font-size:.75rem;color:#a855f7;font-weight:700;margin:0 0 4px">📌 Souvenirs importants (épinglés)</p>
+      <div id="memPinnedList" style="max-height:160px;overflow-y:auto;background:#1e1b2e;border-radius:10px;padding:8px;margin-bottom:10px">
+        <p style="color:#666;font-size:.8rem;text-align:center;padding:8px">Chargement...</p>
+      </div>
+      <p style="font-size:.75rem;color:#38bdf8;font-weight:700;margin:0 0 4px">🕐 Souvenirs récents (7 jours)</p>
+      <div id="memRecentList" style="max-height:160px;overflow-y:auto;background:#1e1b2e;border-radius:10px;padding:8px;margin-bottom:12px">
+        <p style="color:#666;font-size:.8rem;text-align:center;padding:8px">Chargement...</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <button class="btn-secondary" onclick="addMemoryManual()" style="font-size:.82rem">📝 Ajouter un souvenir</button>
+        <button class="btn-secondary" onclick="loadMemoriesTab()" style="font-size:.82rem">🔄 Rafraîchir</button>
+      </div>
+      <button class="btn-danger" style="margin-top:8px;width:100%;font-size:.82rem" onclick="clearMemories()">🗑️ Effacer tous les souvenirs</button>
+    </div>
+  </div>
+
+  <!-- COMPTE -->
+  <div id="tabCompte" class="settings-tab">
+    <div class="field-group">
+      <h3>🔒 Mode adulte</h3>
+      <label class="check-row"><input id="sAgeConfirm" type="checkbox" onchange="updateAdultUI()"/> J'ai 18 ans ou plus</label>
+      <label class="check-row"><input id="sAdultMode" type="checkbox" onchange="updateAdultUI()"/> Mode adulte sans filtre (18+)</label>
+      <div id="adultWarning" class="warning-box" hidden>⚠️ Contenu adulte explicite sans restriction activé.</div>
+    </div>
+    <div class="field-group" style="margin-top:16px;">
+      <h3>📊 Données</h3>
+      <button class="btn-secondary" onclick="exportData()">📤 Exporter</button>
+      <button class="btn-danger" onclick="clearMessages()">🗑️ Effacer la conversation</button>
+      <button class="btn-danger" onclick="clearMemories()">🧠 Effacer les souvenirs</button>
+      <button class="btn-secondary" onclick="logout()">🚪 Déconnexion</button>
+    </div>
+    <div id="sysStatus" class="sys-status" style="margin-top:16px;">Vérification...</div>
+  </div>
+
+  <div class="panel-save-bar">
+    <button class="btn-primary full" onclick="saveAll()">💾 Tout sauvegarder</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+  // Galerie
+  var galleryPanel = document.getElementById("galleryPanel");
+  if (galleryPanel) {
+    galleryPanel.addEventListener("toggle", function () {
+      if (galleryPanel.open && window.loadGallery) loadGallery();
+    });
+  }
+
+  // Tenues v11 — rechargées à chaque ouverture (genre dynamique)
+  var detailsTenues = document.getElementById("detailsTenues");
+  if (detailsTenues) {
+    detailsTenues.addEventListener("toggle", function onTenuesToggle() {
+      if (detailsTenues.open && window.loadStyles) {
+        loadStyles();
+      }
+    });
+  }
+
+  // Anatomie adaptative selon le genre
+  function updateAnatomieVisible() {
+    var libre = document.getElementById("sAnatomieLibre")?.checked;
+    if (libre) {
+      var sf = document.getElementById("secteurFeminin");
+      var sm = document.getElementById("secteurMasculin");
+      if (sf) sf.hidden = false;
+      if (sm) sm.hidden = false;
+      return;
+    }
+    var g = (document.getElementById("sGenre")?.value || "femme").toLowerCase();
+    var sf = document.getElementById("secteurFeminin");
+    var sm = document.getElementById("secteurMasculin");
+    if (sf) sf.hidden = (g === "homme" || g === "homme cisgenre");
+    if (sm) sm.hidden = (g === "femme" || g === "femme cisgenre");
+    var sc = document.getElementById("secteurStatutChir");
+    if (sc) sc.style.display = (g.includes("trans") || g.includes("non-binaire") || g.includes("fluide")) ? "" : "none";
+  }
+
+  var genreSelect = document.getElementById("sGenre");
+  if (genreSelect) {
+    genreSelect.addEventListener("change", updateAnatomieVisible);
+    updateAnatomieVisible();
+  }
+  document.addEventListener("profileLoaded", function() {
+    updateAnatomieVisible();
+    var hl = window.user?.extendedProfile?.anatomie_libre;
+    if (hl && document.getElementById("sAnatomieLibre")) {
+      document.getElementById("sAnatomieLibre").checked = true;
+      updateAnatomieVisible();
+    }
+    var avatarUrl = window.user?.avatarUrl || window.user?.personaPhotoUrl;
+    var preview = document.getElementById("physAvatarPreview");
+    var emoji   = document.getElementById("physAvatarEmoji");
+    if (preview && avatarUrl) {
+      preview.src = avatarUrl; preview.style.display = "block";
+      if (emoji) emoji.style.display = "none";
+    }
+  });
+
+  var sc = document.getElementById("secteurStatutChir");
+  if (sc) sc.style.display = "none";
+
+});
+
+// Toggle anatomie hybride
+function toggleAnatomieLibre(checked) {
+  var sf = document.getElementById("secteurFeminin");
+  var sm = document.getElementById("secteurMasculin");
+  if (checked) {
+    if (sf) sf.hidden = false;
+    if (sm) sm.hidden = false;
+    var sc = document.getElementById("secteurStatutChir");
+    if (sc) sc.style.display = "";
+  } else {
+    var g = (document.getElementById("sGenre")?.value || "femme").toLowerCase();
+    if (sf) sf.hidden = (g === "homme" || g === "homme cisgenre");
+    if (sm) sm.hidden = (g === "femme" || g === "femme cisgenre");
+  }
+}
+
+// Onglet Mémoires
+async function loadMemoriesTab() {
+  try {
+    const r = await fetch("/api/memories/summary", { credentials: "same-origin" });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d.ok) return;
+
+    var mc = document.getElementById("memCount");
+    var fc = document.getElementById("factCount");
+    var jc = document.getElementById("journalCount");
+    if (mc) mc.textContent = d.totalMemories || 0;
+    if (fc) fc.textContent = (d.facts || []).length;
+    if (jc) jc.textContent = (d.journal || []).length;
+
+    if (d.summary) {
+      var block = document.getElementById("memSummaryBlock");
+      var longEl = document.getElementById("memSummaryLong");
+      var sexEl  = document.getElementById("memSummaryPrefSex");
+      if (block) block.style.display = "";
+      if (longEl && d.summary.long) longEl.textContent = "📋 " + d.summary.long.slice(0, 300);
+      if (sexEl  && d.summary.pref_sex) sexEl.textContent  = "🔥 " + d.summary.pref_sex.slice(0, 200);
+    }
+
+    var pinnedEl = document.getElementById("memPinnedList");
+    if (pinnedEl) {
+      var pinned = (d.memories || []).filter(m => m.importance >= 4).slice(0, 10);
+      if (pinned.length === 0) {
+        pinnedEl.innerHTML = "<p style='color:#555;font-size:.78rem;text-align:center;padding:6px'>Aucun souvenir épinglé pour l'instant</p>";
+      } else {
+        pinnedEl.innerHTML = pinned.map(function(m) {
+          return "<div style='padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.78rem;color:#ddd'>" +
+            "<span style='color:#fbbf24;margin-right:4px'>📌</span>" +
+            (m.text || "").slice(0, 120) + "...</div>";
+        }).join("");
+      }
+    }
+
+    var recentEl = document.getElementById("memRecentList");
+    if (recentEl) {
+      var recent = (d.memories || []).filter(m => m.source === "user" || m.source === "conversation").slice(0, 15);
+      if (recent.length === 0) {
+        recentEl.innerHTML = "<p style='color:#555;font-size:.78rem;text-align:center;padding:6px'>Commence à lui parler — elle mémorisera tout !</p>";
+      } else {
+        recentEl.innerHTML = recent.map(function(m) {
+          var date = m.createdAt ? new Date(m.createdAt).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}) : "";
+          return "<div style='padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.76rem;color:#bbb'>" +
+            "<span style='color:#38bdf8;font-size:.7rem;margin-right:4px'>" + date + "</span>" +
+            (m.text || "").slice(0, 100) + "</div>";
+        }).join("");
+      }
+    }
+  } catch(e) { console.warn("[loadMemoriesTab]", e.message); }
+}
+
+// Ajouter un souvenir manuellement
+async function addMemoryManual() {
+  var text = prompt("✏️ Qu'est-ce qu'elle doit retenir ? (sera sauvegardé pour toujours)");
+  if (!text || text.length < 5) return;
+  try {
+    const csrf = localStorage.getItem("csrf") || "";
+    const r = await fetch("/api/memories", {
+      method: "POST", credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
+      body: JSON.stringify({ text, kind: "manual_pin", importance: 5 })
+    });
+    const d = await r.json();
+    if (d.ok) { showToast("📌 Souvenir épinglé pour toujours !", "success"); loadMemoriesTab(); }
+  } catch(e) { showToast("❌ " + e.message, "error"); }
+}
+</script>
+<script src="/v5.js"></script>
+</body>
+</html>
