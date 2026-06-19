@@ -1,0 +1,31 @@
+# Dépendances
+node_modules/
+package-lock.json
+
+# Secrets et config locale
+.env
+
+# Base de données et données utilisateur
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+uploads/
+public/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+
+# Modèles téléchargés
+*.gguf
